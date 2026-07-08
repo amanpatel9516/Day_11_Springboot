@@ -1,0 +1,75 @@
+services:
+  # 1. Eureka Server
+  - type: web
+    name: eureka-server
+    env: docker
+    dockerContext: ./backend/eureka-server
+    dockerfilePath: ./backend/eureka-server/Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    
+  # 2. Profile Service
+  - type: web
+    name: profile-service
+    env: docker
+    dockerContext: ./backend/profile-service
+    dockerfilePath: ./backend/profile-service/Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: cinebook-db
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: cinebook-db
+          property: port
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: cinebook-db
+          property: database
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: cinebook-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: cinebook-db
+          property: password
+      - key: EUREKA_URL
+        value: https://eureka-server.onrender.com/eureka/
+
+  # 3. Gateway Service
+  - type: web
+    name: gateway
+    env: docker
+    dockerContext: ./backend/gateway
+    dockerfilePath: ./backend/gateway/Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: EUREKA_URL
+        value: https://eureka-server.onrender.com/eureka/
+
+  # 4. Frontend React App
+  - type: web
+    name: cinebook-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: REPLACE_ME_WITH_GATEWAY_URL
+
+databases:
+  # 5. PostgreSQL Database
+  - name: cinebook-db
+    plan: free
+    postgresMajorVersion: 15
